@@ -3,7 +3,7 @@
   "displayName": "Tesseract: Codebase Workflow",
   "description": "See any repository as an interactive end-to-end workflow, from UI screens to API endpoints to services and datastores. Runs entirely on your machine.",
   "version": "0.1.0",
-  "publisher": "science-nerd",
+  "publisher": "SharadGoyal",
   "license": "MIT",
   "icon": "images/icon.png",
   "galleryBanner": {
