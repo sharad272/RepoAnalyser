@@ -1,5 +1,5 @@
-// Produces Vercel's Build Output API layout (.vercel/output) at the repo root:
-// the static web app plus one bundled Node function serving /api/*.
+// Produces Vercel's Build Output API layout (.vercel/output): the static web app plus one bundled
+// Node function serving /api/*. Vercel reads it from the project's Root Directory, which is the cwd here.
 import { build } from 'esbuild';
 import { execSync } from 'child_process';
 import fs from 'fs/promises';
@@ -10,7 +10,7 @@ import { GRAMMARS } from '../../packages/analyzer/src/languages.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '../..');
-const out = path.join(root, '.vercel/output');
+const out = path.join(process.cwd(), '.vercel/output');
 const func = path.join(out, 'functions/api.func');
 const require = createRequire(path.join(root, 'packages/analyzer/package.json'));
 

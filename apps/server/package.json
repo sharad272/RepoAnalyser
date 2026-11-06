@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
+    "build:vercel": "tsx vercel-build.mts",
     "start": "node dist/server.js",
     "dev": "node build.mjs && node dist/server.js",
     "typecheck": "tsc --noEmit"
