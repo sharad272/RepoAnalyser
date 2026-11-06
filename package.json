@@ -1,0 +1,20 @@
+{
+  "name": "tesseract",
+  "version": "0.1.0",
+  "private": true,
+  "description": "See any codebase as an interactive end-to-end workflow, from UI to API to datastore.",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "analyze": "tsx packages/analyzer/src/cli.ts analyze",
+    "dev": "npm run dev -w @tesseract/web",
+    "build": "npm run build -w @tesseract/web",
+    "build:server": "npm run build -w @tesseract/web && npm run build -w @tesseract/server",
+    "build:vercel": "tsx apps/server/vercel-build.mts",
+    "server": "npm run build:server && npm start -w @tesseract/server",
+    "package:vscode": "npm run package -w tesseract-workflow",
+    "typecheck": "npm run typecheck --workspaces"
+  }
+}

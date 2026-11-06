@@ -1,0 +1,11 @@
+{
+  "name": "Tesseract",
+  "short_name": "Tesseract",
+  "description": "Explore any codebase as an interactive 3D system with live execution flows.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

@@ -1,0 +1,360 @@
+[
+  {
+    "name": "fastapi-fullstack",
+    "source": "https://github.com/fastapi/full-stack-fastapi-template",
+    "generatedAt": "2026-11-06T11:44:22.987Z",
+    "stats": {
+      "files": 191,
+      "symbols": 650,
+      "calls": 729,
+      "imports": 382,
+      "http": 23,
+      "flows": 66,
+      "e2e": 23,
+      "loc": 15948
+    },
+    "languages": {
+      "config": 26,
+      "python": 43,
+      "html": 4,
+      "shell": 8,
+      "typescript": 109,
+      "css": 1
+    }
+  },
+  {
+    "name": "spring-petclinic",
+    "source": "https://github.com/spring-projects/spring-petclinic",
+    "generatedAt": "2026-11-06T11:44:03.757Z",
+    "stats": {
+      "files": 84,
+      "symbols": 247,
+      "calls": 298,
+      "imports": 24,
+      "http": 2,
+      "flows": 20,
+      "e2e": 1,
+      "loc": 15531
+    },
+    "languages": {
+      "config": 8,
+      "groovy": 2,
+      "java": 50,
+      "sql": 7,
+      "css": 5,
+      "html": 12
+    }
+  },
+  {
+    "name": "express-realworld",
+    "source": "https://github.com/gothinkster/node-express-realworld-example-app",
+    "generatedAt": "2026-11-06T11:43:57.415Z",
+    "stats": {
+      "files": 45,
+      "symbols": 83,
+      "calls": 65,
+      "imports": 49,
+      "http": 0,
+      "flows": 21,
+      "e2e": 0,
+      "loc": 2608
+    },
+    "languages": {
+      "config": 2,
+      "typescript": 38,
+      "javascript": 1,
+      "sql": 4
+    }
+  },
+  {
+    "name": "go-gin-realworld",
+    "source": "https://github.com/gothinkster/golang-gin-realworld-example-app",
+    "generatedAt": "2026-11-06T11:43:47.762Z",
+    "stats": {
+      "files": 28,
+      "symbols": 271,
+      "calls": 556,
+      "imports": 108,
+      "http": 0,
+      "flows": 32,
+      "e2e": 0,
+      "loc": 5906
+    },
+    "languages": {
+      "config": 4,
+      "go": 21,
+      "shell": 3
+    }
+  },
+  {
+    "name": "tesseract",
+    "source": "D:\\unnamed_project",
+    "generatedAt": "2026-11-06T11:43:36.178Z",
+    "stats": {
+      "files": 29,
+      "symbols": 169,
+      "calls": 162,
+      "imports": 41,
+      "http": 0,
+      "flows": 3,
+      "e2e": 0,
+      "loc": 3428
+    },
+    "languages": {
+      "html": 1,
+      "typescript": 24,
+      "css": 1,
+      "javascript": 3
+    }
+  },
+  {
+    "name": "t-py-cli",
+    "source": "https://github.com/tiangolo/typer",
+    "generatedAt": "2026-11-06T11:43:20.724Z",
+    "stats": {
+      "files": 675,
+      "symbols": 2947,
+      "calls": 2941,
+      "imports": 897,
+      "http": 0,
+      "flows": 41,
+      "e2e": 0,
+      "loc": 38793
+    },
+    "languages": {
+      "config": 26,
+      "css": 2,
+      "javascript": 2,
+      "html": 1,
+      "python": 638,
+      "shell": 6
+    }
+  },
+  {
+    "name": "t-rust-cli",
+    "source": "https://github.com/sharkdp/hyperfine",
+    "generatedAt": "2026-11-06T11:43:04.720Z",
+    "stats": {
+      "files": 58,
+      "symbols": 485,
+      "calls": 608,
+      "imports": 103,
+      "http": 0,
+      "flows": 18,
+      "e2e": 0,
+      "loc": 10080
+    },
+    "languages": {
+      "config": 5,
+      "rust": 45,
+      "python": 8
+    }
+  },
+  {
+    "name": "t-py-lib",
+    "source": "https://github.com/psf/requests",
+    "generatedAt": "2026-11-06T11:42:58.094Z",
+    "stats": {
+      "files": 60,
+      "symbols": 826,
+      "calls": 1054,
+      "imports": 106,
+      "http": 0,
+      "flows": 7,
+      "e2e": 0,
+      "loc": 13056
+    },
+    "languages": {
+      "config": 21,
+      "css": 1,
+      "html": 1,
+      "python": 37
+    }
+  },
+  {
+    "name": "t-express-mvc",
+    "source": "https://github.com/sahat/hackathon-starter",
+    "generatedAt": "2026-11-06T11:42:51.371Z",
+    "stats": {
+      "files": 62,
+      "symbols": 389,
+      "calls": 363,
+      "imports": 39,
+      "http": 0,
+      "flows": 106,
+      "e2e": 0,
+      "loc": 16889
+    },
+    "languages": {
+      "config": 3,
+      "javascript": 56,
+      "css": 1,
+      "html": 2
+    }
+  },
+  {
+    "name": "t-nextjs",
+    "source": "https://github.com/shadcn-ui/taxonomy",
+    "generatedAt": "2026-11-06T11:42:42.706Z",
+    "stats": {
+      "files": 138,
+      "symbols": 278,
+      "calls": 117,
+      "imports": 249,
+      "http": 5,
+      "flows": 30,
+      "e2e": 5,
+      "loc": 16346
+    },
+    "languages": {
+      "typescript": 125,
+      "javascript": 6,
+      "config": 2,
+      "sql": 2,
+      "css": 3
+    }
+  },
+  {
+    "name": "t-vue-spa",
+    "source": "https://github.com/gothinkster/vue-realworld-example-app",
+    "generatedAt": "2026-11-06T11:42:28.670Z",
+    "stats": {
+      "files": 41,
+      "symbols": 135,
+      "calls": 108,
+      "imports": 70,
+      "http": 0,
+      "flows": 15,
+      "e2e": 0,
+      "loc": 2411
+    },
+    "languages": {
+      "config": 5,
+      "javascript": 14,
+      "html": 1,
+      "typescript": 1,
+      "vue": 20
+    }
+  },
+  {
+    "name": "t-react-spa",
+    "source": "https://github.com/gothinkster/react-redux-realworld-example-app",
+    "generatedAt": "2026-11-06T11:42:19.001Z",
+    "stats": {
+      "files": 39,
+      "symbols": 221,
+      "calls": 145,
+      "imports": 82,
+      "http": 0,
+      "flows": 13,
+      "e2e": 0,
+      "loc": 2413
+    },
+    "languages": {
+      "html": 1,
+      "javascript": 38
+    }
+  },
+  {
+    "name": "t-aspnet",
+    "source": "https://github.com/gothinkster/aspnetcore-realworld-example-app",
+    "generatedAt": "2026-11-06T11:42:11.887Z",
+    "stats": {
+      "files": 117,
+      "symbols": 329,
+      "calls": 485,
+      "imports": 671,
+      "http": 0,
+      "flows": 23,
+      "e2e": 0,
+      "loc": 7872
+    },
+    "languages": {
+      "config": 7,
+      "powershell": 1,
+      "shell": 4,
+      "csharp": 105
+    }
+  },
+  {
+    "name": "t-nestjs",
+    "source": "https://github.com/lujakob/nestjs-realworld-example-app",
+    "generatedAt": "2026-11-06T11:41:58.950Z",
+    "stats": {
+      "files": 36,
+      "symbols": 135,
+      "calls": 40,
+      "imports": 71,
+      "http": 0,
+      "flows": 25,
+      "e2e": 0,
+      "loc": 1211
+    },
+    "languages": {
+      "javascript": 1,
+      "typescript": 35
+    }
+  },
+  {
+    "name": "t-laravel",
+    "source": "https://github.com/gothinkster/laravel-realworld-example-app",
+    "generatedAt": "2026-11-06T11:41:49.216Z",
+    "stats": {
+      "files": 118,
+      "symbols": 1720,
+      "calls": 4424,
+      "imports": 4,
+      "http": 0,
+      "flows": 95,
+      "e2e": 0,
+      "loc": 7117
+    },
+    "languages": {
+      "config": 3,
+      "php": 107,
+      "css": 3,
+      "javascript": 4,
+      "vue": 1
+    }
+  },
+  {
+    "name": "t-rails",
+    "source": "https://github.com/gothinkster/rails-realworld-example-app",
+    "generatedAt": "2026-11-06T11:41:40.065Z",
+    "stats": {
+      "files": 63,
+      "symbols": 104,
+      "calls": 2,
+      "imports": 4,
+      "http": 0,
+      "flows": 18,
+      "e2e": 0,
+      "loc": 1743
+    },
+    "languages": {
+      "javascript": 1,
+      "css": 1,
+      "ruby": 50,
+      "config": 8,
+      "html": 3
+    }
+  },
+  {
+    "name": "t-django",
+    "source": "https://github.com/gothinkster/django-realworld-example-app",
+    "generatedAt": "2026-11-06T11:41:31.307Z",
+    "stats": {
+      "files": 44,
+      "symbols": 138,
+      "calls": 38,
+      "imports": 31,
+      "http": 0,
+      "flows": 13,
+      "e2e": 0,
+      "loc": 1822
+    },
+    "languages": {
+      "python": 44
+    }
+  }
+]

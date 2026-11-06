@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: tesseract
+    runtime: docker
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      - key: MAX_CONCURRENT
+        value: "2"
+      - key: RATE_LIMIT_PER_HOUR
+        value: "12"
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 5

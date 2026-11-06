@@ -1,0 +1,82 @@
+{
+  "name": "tesseract-workflow",
+  "displayName": "Tesseract: Codebase Workflow",
+  "description": "See any repository as an interactive end-to-end workflow, from UI screens to API endpoints to services and datastores. Runs entirely on your machine.",
+  "version": "0.1.0",
+  "publisher": "tesseract",
+  "private": true,
+  "license": "UNLICENSED",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "architecture",
+    "workflow",
+    "call graph",
+    "onboarding",
+    "code map"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "tesseract.showWorkflow",
+        "title": "Show Codebase Workflow",
+        "category": "Tesseract",
+        "icon": "$(type-hierarchy)"
+      },
+      {
+        "command": "tesseract.reanalyze",
+        "title": "Re-analyze Workspace",
+        "category": "Tesseract"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "tesseract.showWorkflow",
+          "when": "explorerResourceIsFolder",
+          "group": "navigation@99"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "tesseract.reanalyze",
+          "when": "tesseract.panelOpen"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Tesseract",
+      "properties": {
+        "tesseract.refreshOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Re-analyze the workspace in the background when a file is saved while the workflow is open."
+        },
+        "tesseract.showStatusBarButton": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a Workflow button in the status bar."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsx build.mts",
+    "package": "tsx build.mts --production && vsce package --no-dependencies --skip-license --allow-missing-repository --out tesseract-workflow.vsix",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/vscode": "1.80.0",
+    "@vscode/vsce": "^3.2.0",
+    "esbuild": "^0.25.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

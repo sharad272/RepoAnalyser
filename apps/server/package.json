@@ -1,0 +1,23 @@
+{
+  "name": "@tesseract/server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hosts the workflow UI and analyzes public git repositories on demand.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "start": "node dist/server.js",
+    "dev": "node build.mjs && node dist/server.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "esbuild": "^0.25.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.8.2",
+    "tar": "^7.5.22"
+  }
+}
