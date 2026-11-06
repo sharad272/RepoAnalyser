@@ -60,7 +60,7 @@ Requires Node 20+ (and `git` for the server/CLI).
 
 ```bash
 npm install
-npm run dev        # web app with sample graphs at http://localhost:5173
+npm run dev        # web app at http://localhost:5173, showing graphs you made with `npm run analyze`
 npm run server     # web app + URL-bar analyzer at http://localhost:8787
 ```
 

@@ -1,6 +1,6 @@
 // Vercel function: downloads a public repo archive (no git on Vercel), analyzes it in-process,
-// and keeps results in Vercel Blob when a store is connected (BLOB_READ_WRITE_TOKEN), else in /tmp.
-import { BlobNotFoundError, head, put } from '@vercel/blob';
+// and keeps results in Vercel Blob when a store is connected, else in /tmp.
+import { BlobNotFoundError, get, put } from '@vercel/blob';
 import fs from 'fs/promises';
 import type { IncomingMessage, ServerResponse } from 'http';
 import os from 'os';
@@ -8,6 +8,7 @@ import path from 'path';
 import { Readable, Transform } from 'stream';
 import { pipeline } from 'stream/promises';
 import * as tar from 'tar';
+import { gzipSync } from 'zlib';
 import { analyze } from '../../../packages/analyzer/src/analyze.js';
 import { configureParsers } from '../../../packages/analyzer/src/extract.js';
 import { allowedHosts, allowRequest, clientIp, parseRepoUrl, toRecord, UserError, type RepoRecord, type RepoRef } from './repo.js';
@@ -26,26 +27,27 @@ configureParsers({ grammarDir: wasm, runtimeWasm: path.join(wasm, 'tree-sitter.w
 
 // ---------- Storage ----------
 
-const useBlob = () => !!process.env.BLOB_READ_WRITE_TOKEN;
+// A connected store provides BLOB_STORE_ID (OIDC auth) or, on older setups, BLOB_READ_WRITE_TOKEN.
+const useBlob = () => !!(process.env.BLOB_STORE_ID || process.env.BLOB_READ_WRITE_TOKEN);
+const BLOB_ACCESS = process.env.BLOB_ACCESS === 'public' ? 'public' : 'private';
 
-async function blobUrl(pathname: string): Promise<string | null> {
+/** Raw bytes of a stored file, or null when it does not exist. */
+async function readRaw(pathname: string): Promise<Buffer | null> {
+  const local = await fs.readFile(path.join(TMP_STORE, pathname)).catch(() => null);
+  if (local || !useBlob()) return local;
   try {
-    return (await head(pathname)).url;
+    const hit = await get(pathname, { access: BLOB_ACCESS, useCache: false });
+    return hit?.stream ? Buffer.from(await new Response(hit.stream).arrayBuffer()) : null;
   } catch (e) {
-    if (e instanceof BlobNotFoundError) return null;
-    throw e;
+    if (!(e instanceof BlobNotFoundError)) console.error(`[blob] read ${pathname}`, e);
+    return null;
   }
 }
 
 async function readJson<T>(pathname: string): Promise<T | null> {
-  if (useBlob()) {
-    const url = await blobUrl(pathname);
-    if (!url) return null;
-    const res = await fetch(`${url}?t=${Date.now()}`);
-    return res.ok ? ((await res.json()) as T) : null;
-  }
+  const raw = await readRaw(pathname);
   try {
-    return JSON.parse(await fs.readFile(path.join(TMP_STORE, pathname), 'utf8')) as T;
+    return raw ? (JSON.parse(raw.toString('utf8')) as T) : null;
   } catch {
     return null;
   }
@@ -53,16 +55,16 @@ async function readJson<T>(pathname: string): Promise<T | null> {
 
 async function writeJson(pathname: string, value: unknown) {
   const body = JSON.stringify(value);
-  if (useBlob()) {
-    await put(pathname, body, { access: 'public', addRandomSuffix: false, allowOverwrite: true, cacheControlMaxAge: 60, contentType: 'application/json' });
-    return;
-  }
+  // /tmp serves follow-up requests on this instance; Blob makes the result durable and shared across instances.
   const file = path.join(TMP_STORE, pathname);
   await fs.mkdir(path.dirname(file), { recursive: true });
   await fs.writeFile(file, body);
+  if (useBlob()) {
+    await put(pathname, body, { access: BLOB_ACCESS, addRandomSuffix: false, allowOverwrite: true, contentType: 'application/json' }).catch((e) =>
+      console.error(`[blob] write ${pathname}`, e),
+    );
+  }
 }
-
-const readIndex = async () => (await readJson<RepoRecord[]>('index.json')) ?? [];
 
 async function cached(key: string): Promise<RepoRecord | null> {
   const rec = await readJson<RepoRecord>(`records/${key}.json`);
@@ -125,8 +127,6 @@ async function runAnalysis(repo: RepoRef, emit: (event: string, data: unknown) =
     const rec = toRecord(repo, graph.meta);
     await Promise.all([writeJson(`graphs/${repo.key}.graph.json`, graph), writeJson(`graphs/${repo.key}.src.json`, sources)]);
     await writeJson(`records/${repo.key}.json`, rec);
-    const index = (await readIndex()).filter((r) => r.key !== rec.key);
-    await writeJson('index.json', [rec, ...index].slice(0, 200));
     return rec;
   } finally {
     await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
@@ -174,17 +174,13 @@ async function handleAnalyze(req: IncomingMessage, res: ServerResponse, url: URL
   }
 }
 
-async function handleGraph(res: ServerResponse, file: string) {
-  if (useBlob()) {
-    const url = await blobUrl(`graphs/${file}`);
-    if (!url) return sendJson(res, 404, { error: 'not found' });
-    res.writeHead(302, { location: url, 'cache-control': 'public, max-age=60' });
-    return res.end();
-  }
-  const body = await fs.readFile(path.join(TMP_STORE, 'graphs', file)).catch(() => null);
+async function handleGraph(req: IncomingMessage, res: ServerResponse, file: string) {
+  const body = await readRaw(`graphs/${file}`);
   if (!body) return sendJson(res, 404, { error: 'not found' });
-  res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=60' });
-  res.end(body);
+  // Graphs of large repos run to several MB; gzip keeps them well inside the function response limit.
+  const gzip = /\bgzip\b/.test(String(req.headers['accept-encoding'] ?? ''));
+  res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=60', vary: 'accept-encoding', ...(gzip ? { 'content-encoding': 'gzip' } : {}) });
+  res.end(gzip ? gzipSync(body) : body);
 }
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
@@ -196,7 +192,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     if (route === 'health') return sendJson(res, 200, { ok: true, storage: useBlob() ? 'blob' : 'tmp' });
     if (route === 'analyze') return await handleAnalyze(req, res, url);
     const graph = route.match(/^graphs\/([\w.-]+\.(?:graph|src)\.json)$/);
-    if (graph) return await handleGraph(res, graph[1]);
+    if (graph) return await handleGraph(req, res, graph[1]);
     sendJson(res, 404, { error: 'not found' });
   } catch (e) {
     console.error(e);
