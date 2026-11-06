@@ -1,6 +1,7 @@
 import { ReactFlowProvider } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { FLOW_KIND_LABEL, LANES } from '../colors';
+import { flowLabel } from '../graph';
 import { useStore } from '../store';
 import { FlowDiagram } from './FlowDiagram';
 import { SystemMap } from './SystemMap';
@@ -9,6 +10,7 @@ function FlowHeader() {
   const index = useStore((s) => s.index)!;
   const flowId = useStore((s) => s.flowId)!;
   const flow = index.g.flows[flowId];
+  const label = flowLabel(flow);
   const requests = [...new Set(flow.steps.filter((s) => s.h).map((s) => s.h!))];
   const touchesStore = flow.steps.some((s) => index.nodes[s.n].db?.length);
   const lanes = LANES.filter((l) => (flow.layers as string[]).includes(l.id) || (l.id === 'store' && touchesStore));
@@ -17,7 +19,8 @@ function FlowHeader() {
       <button className="back" onClick={() => useStore.getState().setFlow(null)}>← System workflow</button>
       <div className="wf-header-title">
         <span className={`badge badge-${flow.kind}`}>{FLOW_KIND_LABEL[flow.kind]}</span>
-        <span className="mono">{flow.name}</span>
+        <span className="mono">{label.title}</span>
+        {label.sub && <span className="wf-header-sub">{label.sub}</span>}
       </div>
       <div className="wf-path">
         {lanes.map((l, i) => (

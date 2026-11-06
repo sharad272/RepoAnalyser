@@ -69,4 +69,14 @@ export const LaneNode = memo(function LaneNode({ data }: NodeProps<Node<LaneData
   );
 });
 
-export const nodeTypes = { step: StepNode, store: StoreNode, lane: LaneNode };
+export type GroupData = { label: string; color: string };
+
+export const GroupNode = memo(function GroupNode({ data }: NodeProps<Node<GroupData>>) {
+  return (
+    <div className="wf-group" style={{ '--lane': data.color } as React.CSSProperties}>
+      {data.label}
+    </div>
+  );
+});
+
+export const nodeTypes = { step: StepNode, store: StoreNode, lane: LaneNode, section: GroupNode };

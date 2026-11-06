@@ -1,10 +1,10 @@
-import { Background, Controls, MarkerType, ReactFlow, type Edge, type Node } from '@xyflow/react';
-import { useMemo } from 'react';
+import { Background, Controls, MarkerType, ReactFlow, useReactFlow, type Edge, type Node } from '@xyflow/react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FLOW_KIND_LABEL, LANES, LANE_COLOR } from '../colors';
 import type { GraphIndex } from '../graph';
 import { useStore } from '../store';
 import type { GNode } from '../types';
-import { nodeTypes, type LaneData, type StepData } from './nodes';
+import { nodeTypes, type GroupData, type LaneData, type StepData } from './nodes';
 
 const COL_W = 330;
 const CARD_W = 260;
@@ -26,10 +26,20 @@ interface Card {
   links: Set<string>;
   order: number;
   weight: number;
+  /** section header the card is listed under in its column */
+  group?: string;
 }
 
 const HTTP_ENTRY = /^[A-Z]+ \//;
 const dirOf = (p: string) => p.split('/').slice(-3, -1).join('/') || '/';
+
+/** `/api/v1/articles/:slug` → `/articles`: the resource an endpoint belongs to, ignoring version prefixes and params. */
+function resourceOf(p: string) {
+  const segs = p.split('/').filter(Boolean);
+  while (segs.length > 1 && /^(?:api|rest|v\d+(?:\.\d+)?)$/i.test(segs[0])) segs.shift();
+  const first = segs[0];
+  return !first || /^[:{[<*]/.test(first) ? '/' : `/${first}`;
+}
 
 /**
  * Architecture-level workflow, built from whatever the repo has: UI screens, HTTP endpoints, CLI commands,
@@ -63,8 +73,8 @@ function buildSystem(index: GraphIndex) {
     const file = fileNode(id);
     return card(`fe-${file.id}`, { col: 'frontend', title: file.name.replace(/\.[^.]+$/, ''), subtitle: dirOf(file.path), target: file.id });
   };
-  const moduleCard = (f: GNode) =>
-    card(`${f.layer === 'data' ? 'da' : 'be'}-${f.id}`, { col: f.layer === 'data' ? 'data' : 'backend', title: f.name, subtitle: dirOf(f.path), target: f.id });
+  const colOf = (f: GNode): Col => (f.layer === 'data' ? 'data' : 'backend');
+  const moduleCard = (f: GNode) => card(`${f.layer === 'data' ? 'da' : 'be'}-${f.id}`, { col: colOf(f), title: f.name, subtitle: dirOf(f.path), target: f.id });
   const storeCards = (n: GNode) => [
     ...(n.db ?? []).map((db) =>
       card(`db-${db}`, { col: 'store', title: db === 'db' ? 'Database (raw query)' : db === 'cache' ? 'Cache' : db, subtitle: db === 'db' || db === 'cache' ? 'datastore' : 'table / model', target: n.id }),
@@ -78,20 +88,29 @@ function buildSystem(index: GraphIndex) {
     }),
   ];
 
-  /** What a server-side entry point runs: the first modules outside its own file, and every datastore within reach. */
+  /**
+   * What a server-side entry point runs: the first module outside its own file, then any deeper tier (e.g. a
+   * repository in the data layer). Each datastore is linked to the card whose code touches it, so the map reads
+   * as a chain (endpoint → service → table) instead of every endpoint pointing straight at every table.
+   */
   const expand = (from: Card, entry: number) => {
     const entryFile = index.fileOf(entry);
-    const seen = new Set<number>([entry]);
+    const via = new Map<number, Card>([[entry, from]]);
     let frontier = [entry];
     for (let depth = 0; depth < 6 && frontier.length; depth++) {
       const next: number[] = [];
       for (const id of frontier) {
-        for (const s of storeCards(nodes[id])) link(from, s, 'db');
+        const owner = via.get(id)!;
+        for (const s of storeCards(nodes[id])) link(owner, s, 'db');
         for (const e of index.out.get(id) ?? []) {
-          if (e.k !== 'call' || seen.has(e.t) || nodes[e.t].layer === 'frontend') continue;
-          seen.add(e.t);
+          if (e.k !== 'call' || via.has(e.t) || nodes[e.t].layer === 'frontend') continue;
           const f = index.fileOf(e.t);
-          if (f >= 0 && f !== entryFile && index.fileOf(id) === entryFile) link(from, moduleCard(nodes[f]), 'call');
+          let to = owner;
+          if (f >= 0 && f !== entryFile && (owner === from || COLUMNS.indexOf(colOf(nodes[f])) > COLUMNS.indexOf(owner.col))) {
+            to = moduleCard(nodes[f]);
+            link(owner, to, 'call');
+          }
+          via.set(e.t, to);
           next.push(e.t);
         }
       }
@@ -99,11 +118,15 @@ function buildSystem(index: GraphIndex) {
     }
   };
 
-  // HTTP endpoints, sorted by path.
-  const endpoints = nodes.filter((n) => n.layer === 'api' && n.entry && HTTP_ENTRY.test(n.entry)).sort((a, b) => a.entry!.split(' ')[1].localeCompare(b.entry!.split(' ')[1]));
+  // HTTP endpoints, grouped by resource and sorted by path.
+  const pathOf = (n: GNode) => n.entry!.split(' ')[1];
+  const endpoints = nodes
+    .filter((n) => n.layer === 'api' && n.entry && HTTP_ENTRY.test(n.entry))
+    .sort((a, b) => resourceOf(pathOf(a)).localeCompare(resourceOf(pathOf(b))) || pathOf(a).localeCompare(pathOf(b)));
   const endpointCard = (n: GNode) => {
     const [method, ...rest] = n.entry!.split(' ');
-    return card(`api-${n.id}`, { col: 'api', title: rest.join(' '), subtitle: `${n.name.startsWith(method) ? '' : `${n.name} · `}${n.path.split('#')[0].split('/').pop()}`, badge: method, target: n.id });
+    const p = rest.join(' ');
+    return card(`api-${n.id}`, { col: 'api', title: p, subtitle: `${n.name.startsWith(method) ? '' : `${n.name} · `}${n.path.split('#')[0].split('/').pop()}`, badge: method, target: n.id, group: resourceOf(p) });
   };
   for (const ep of endpoints.slice(0, MAX_PER_COLUMN)) expand(endpointCard(ep), ep.id);
 
@@ -148,8 +171,8 @@ function buildSystem(index: GraphIndex) {
     const named = !!entry.entry && !['main', 'script'].includes(entry.entry);
     // A script's top-level code and its main() are one entry point.
     const c = named || f.kind === 'inferred'
-      ? card(`en-${entry.id}`, { col: 'api', title: named ? entry.entry!.replace(/^(?:CLI|JOB)\s*/, '') || entry.name : `${entry.name}()`, subtitle: file.path, badge: FLOW_KIND_LABEL[f.kind], target: entry.id })
-      : card(`en-f${file.id}`, { col: 'api', title: file.name, subtitle: file.path.split('/').slice(0, -1).join('/') || '/', badge: FLOW_KIND_LABEL[f.kind], target: entry.id });
+      ? card(`en-${entry.id}`, { col: 'api', title: named ? entry.entry!.replace(/^(?:CLI|JOB)\s*/, '') || entry.name : `${entry.name}()`, subtitle: file.path, badge: FLOW_KIND_LABEL[f.kind], target: entry.id, group: FLOW_KIND_LABEL[f.kind] })
+      : card(`en-f${file.id}`, { col: 'api', title: file.name, subtitle: file.path.split('/').slice(0, -1).join('/') || '/', badge: FLOW_KIND_LABEL[f.kind], target: entry.id, group: FLOW_KIND_LABEL[f.kind] });
     expand(c, entry.id);
   }
 
@@ -190,10 +213,16 @@ function buildSystem(index: GraphIndex) {
   const anchor = (['api', 'backend', 'frontend', 'data', 'store'] as const).find((c) => byCol(c).length)!;
   const ordered = new Set<string>();
   if (anchor) {
-    // Endpoints keep path order; other entry points go busiest first.
-    const rank = (c: Card) => (c.key.startsWith('api-') ? 1e9 : c.links.size);
+    // Endpoints keep their resource/path order; other entry points are grouped by kind, busiest first.
+    const isEndpoint = (c: Card) => c.key.startsWith('api-');
     byCol(anchor)
-      .sort((a, b) => (anchor === 'api' && a.key.startsWith('api-') && b.key.startsWith('api-') ? 0 : rank(b) - rank(a)))
+      .sort((a, b) =>
+        anchor !== 'api'
+          ? b.links.size - a.links.size
+          : isEndpoint(a) || isEndpoint(b)
+            ? Number(isEndpoint(b)) - Number(isEndpoint(a))
+            : (a.group ?? '').localeCompare(b.group ?? '') || b.links.size - a.links.size,
+      )
       .forEach((c, i) => {
         c.order = i;
         ordered.add(c.key);
@@ -220,9 +249,27 @@ const COL_TEXT: Record<Col, [string, string]> = {
   store: ['datastore / service', 'datastores & services'],
 };
 
+const GROUP_H = 30;
+const MIN_FOR_GROUPS = 6;
+
+/** Everything upstream and downstream of `key`, following edges in their drawn direction. */
+function pathThrough(key: string, out: Map<string, string[]>, inc: Map<string, string[]>) {
+  const keep = new Set([key]);
+  for (const adj of [out, inc]) {
+    const stack = [key];
+    while (stack.length) for (const k of adj.get(stack.pop()!) ?? []) if (!keep.has(k)) keep.add(k), stack.push(k);
+  }
+  return keep;
+}
+
 export function SystemMap() {
   const index = useStore((s) => s.index)!;
-  const { rfNodes, rfEdges, summary, targets, fallback, onlyApi } = useMemo(() => {
+  const rf = useReactFlow();
+  const wrap = useRef<HTMLDivElement>(null);
+  const [hover, setHover] = useState<string | null>(null);
+  const mobile = useMemo(() => matchMedia('(max-width: 768px)').matches, []);
+
+  const { rfNodes, rfEdges, summary, targets, fallback, onlyApi, size, out, inc } = useMemo(() => {
     const { cards, edges, fallback } = buildSystem(index);
     const targets = new Map([...cards.values()].map((c) => [c.key, c.target]));
     const rfNodes: Node[] = [];
@@ -231,7 +278,22 @@ export function SystemMap() {
     const shown = new Set(columns.flatMap((c) => c.cards.map((x) => x.key)));
     const apiCards = columns.find((c) => c.col === 'api')?.cards ?? [];
     const allHttp = apiCards.every((c) => c.key.startsWith('api-'));
-    const height = Math.max(...columns.map((c) => c.cards.length), 1) * ROW_H + TOP + 30;
+
+    // Rows per column, with a section header wherever the group changes in a long, multi-group column.
+    const rows = columns.map(({ cards: list }) => {
+      const groups = new Set(list.map((c) => c.group).filter(Boolean));
+      const headed = list.length >= MIN_FOR_GROUPS && groups.size >= 2;
+      let y = TOP;
+      return list.map((c, i) => {
+        const header = headed && c.group && c.group !== list[i - 1]?.group ? c.group : undefined;
+        if (header) y += GROUP_H;
+        const row = { c, y, header, headerY: y - GROUP_H + 4 };
+        y += ROW_H;
+        return row;
+      });
+    });
+    const height = Math.max(...rows.map((r) => (r.length ? r[r.length - 1].y + ROW_H : TOP)), TOP) + 30;
+
     const summary: Array<{ col: Col; text: string }> = [];
     columns.forEach(({ col, cards: list }, ci) => {
       const lane = LANES.find((l) => l.id === col)!;
@@ -249,17 +311,32 @@ export function SystemMap() {
         zIndex: -1,
         style: { width: COL_W - 20, height },
       });
-      list.forEach((c, ri) => {
+      const x = ci * COL_W + (COL_W - 20 - CARD_W) / 2;
+      for (const { c, y, header, headerY } of rows[ci]) {
+        if (header) {
+          rfNodes.push({
+            id: `grp-${col}-${header}`,
+            type: 'section',
+            position: { x, y: headerY },
+            data: { label: header, color: LANE_COLOR[col] } satisfies GroupData,
+            draggable: false,
+            selectable: false,
+            style: { width: CARD_W },
+          });
+        }
         rfNodes.push({
           id: c.key,
           type: col === 'store' ? 'store' : 'step',
-          position: { x: ci * COL_W + (COL_W - 20 - CARD_W) / 2, y: TOP + ri * ROW_H },
+          position: { x, y },
           data: { title: c.title, subtitle: c.subtitle, badge: c.badge, color: LANE_COLOR[col], state: 'idle', orientation: 'horizontal', count: col === 'api' ? undefined : c.links.size } satisfies StepData,
           style: { width: CARD_W },
         });
-      });
+      }
     });
+
     const colIndex = new Map(columns.map((c, i) => [c.col, i]));
+    const out = new Map<string, string[]>();
+    const inc = new Map<string, string[]>();
     const rfEdges: Edge[] = [...edges.values()]
       .filter((e) => shown.has(e.a) && shown.has(e.b))
       .map((e, i) => {
@@ -268,17 +345,50 @@ export function SystemMap() {
         const b = cards.get(e.b)!;
         // Keep arrows flowing left to right even for same-column or backwards links.
         const flip = colIndex.get(a.col)! > colIndex.get(b.col)!;
+        const source = flip ? e.b : e.a;
+        const target = flip ? e.a : e.b;
+        out.set(source, [...(out.get(source) ?? []), target]);
+        inc.set(target, [...(inc.get(target) ?? []), source]);
         return {
           id: `se-${i}`,
-          source: flip ? e.b : e.a,
-          target: flip ? e.a : e.b,
+          source,
+          target,
           animated: e.kind === 'http',
           style: { stroke: color, strokeWidth: Math.min(1 + Math.log2(e.w + 1) * 0.6, 3), opacity: 0.7, strokeDasharray: e.kind === 'db' ? '5 4' : undefined },
           markerEnd: { type: MarkerType.ArrowClosed, color, width: 14, height: 14 },
         };
       });
-    return { rfNodes, rfEdges, summary, targets, fallback, onlyApi: !columns.some((c) => c.col === 'frontend') && apiCards.some((c) => c.key.startsWith('api-')) };
+    const size = { w: columns.length * COL_W - 20, h: height };
+    return { rfNodes, rfEdges, summary, targets, fallback, onlyApi: !columns.some((c) => c.col === 'frontend') && apiCards.some((c) => c.key.startsWith('api-')), size, out, inc };
   }, [index]);
+
+  // Hovering a card traces everything it connects to and fades the rest.
+  const { nodes, edges } = useMemo(() => {
+    if (!hover) return { nodes: rfNodes, edges: rfEdges };
+    const keep = pathThrough(hover, out, inc);
+    return {
+      nodes: rfNodes.map((n) => (n.type === 'lane' || n.type === 'section' || keep.has(n.id) ? n : { ...n, className: 'wf-dim' })),
+      edges: rfEdges.map((e) =>
+        keep.has(e.source) && keep.has(e.target)
+          ? { ...e, style: { ...e.style, opacity: 1, strokeWidth: Number(e.style?.strokeWidth ?? 1) + 0.8 }, zIndex: 1 }
+          : { ...e, animated: false, style: { ...e.style, opacity: 0.06 } },
+      ),
+    };
+  }, [hover, rfNodes, rfEdges, out, inc]);
+
+  // Open at a zoom where card text is readable: fit the width and let tall maps scroll, rather than shrinking everything to fit.
+  const fit = useCallback(() => {
+    const el = wrap.current?.querySelector('.react-flow');
+    if (!el) return;
+    const { clientWidth: W, clientHeight: H } = el;
+    const zoom = Math.min(1, Math.max(mobile ? 0.5 : 0.65, (W - 32) / size.w));
+    if (size.h * zoom <= H) return void rf.fitView({ padding: 0.06, maxZoom: 1 });
+    void rf.setViewport({ x: Math.max(16, (W - size.w * zoom) / 2), y: 12, zoom });
+  }, [rf, size, mobile]);
+  useEffect(() => {
+    const t = requestAnimationFrame(fit);
+    return () => cancelAnimationFrame(t);
+  }, [fit]);
 
   /** Screens and entry points open the flow they take part in; everything else opens its details. */
   const openFor = (key: string) => {
@@ -309,33 +419,44 @@ export function SystemMap() {
   }
 
   return (
-    <div className="system-map">
+    <div className="system-map" ref={wrap}>
       <div className="system-summary">
-        {summary.map((s, i) => (
-          <span key={s.col} style={{ color: LANE_COLOR[s.col] }}>
-            {i > 0 && <b className="sep">→</b>}
-            {s.text}
+        <div className="system-chain">
+          {summary.map((s, i) => (
+            <span key={s.col} style={{ color: LANE_COLOR[s.col] }}>
+              {i > 0 && <b className="sep">→</b>}
+              {s.text}
+            </span>
+          ))}
+        </div>
+        <div className="system-guide">
+          <span>Read left to right: where requests come in, the code that handles them, and the data they reach.</span>
+          <span>{mobile ? 'Tap a card to step through its flow.' : 'Hover a card to trace its path · click to step through it · scroll to move.'}</span>
+          <span className="legend-key">
+            <i className="k-http" /> HTTP request <i className="k-call" /> calls <i className="k-db" /> reads / writes
           </span>
-        ))}
+        </div>
         {onlyApi && <em>No UI code calling these endpoints was found in this repo.</em>}
         {fallback && <em>No entry points detected, so this shows how the most connected files depend on each other.</em>}
       </div>
       <ReactFlow
-        nodes={rfNodes}
-        edges={rfEdges}
+        nodes={nodes}
+        edges={edges}
         nodeTypes={nodeTypes}
         colorMode="dark"
-        fitView
-        fitViewOptions={{ padding: 0.08, maxZoom: 1 }}
         minZoom={0.1}
+        panOnScroll
         nodesDraggable={false}
         nodesConnectable={false}
         proOptions={{ hideAttribution: true }}
         onNodeClick={(_, n) => openFor(n.id)}
+        onNodeMouseEnter={(_, n) => !mobile && n.type !== 'lane' && n.type !== 'section' && setHover(n.id)}
+        onNodeMouseLeave={() => setHover(null)}
       >
         <Background gap={28} size={1} color="#1e293b" />
-        <Controls showInteractive={false} position="bottom-right" />
+        <Controls showInteractive={false} position="bottom-right" onFitView={fit} />
       </ReactFlow>
     </div>
   );
 }
+

@@ -1,4 +1,15 @@
-import type { GEdge, GNode, Graph } from './types';
+import type { Flow, GEdge, GNode, Graph } from './types';
+
+/**
+ * How a flow is listed: flows that call the backend are named after the request they make
+ * (`POST /login/access-token`, from `useAuth.ts`) rather than the often anonymous function they start in.
+ */
+export function flowLabel(flow: Flow): { title: string; sub: string } {
+  const requests = [...new Set(flow.steps.flatMap((s) => (s.h ? [s.h] : [])))];
+  if (!requests.length) return { title: flow.name, sub: '' };
+  const from = flow.name.split(' · ').pop()!;
+  return { title: requests.length > 1 ? `${requests[0]} +${requests.length - 1}` : requests[0], sub: `from ${from}` };
+}
 
 /** Precomputed lookups over a graph. Node ids are DFS preorder, so every subtree is a contiguous id range. */
 export class GraphIndex {

@@ -262,7 +262,6 @@ const server = http.createServer(async (req, res) => {
     const url = new URL(req.url ?? '/', 'http://localhost');
     if (req.method !== 'GET' && req.method !== 'HEAD') return sendJson(res, 405, { error: 'method not allowed' });
     if (url.pathname === '/api/health') return sendJson(res, 200, { ok: true, running, queued: queue.length });
-    if (url.pathname === '/api/repos') return sendJson(res, 200, (await readIndex()).slice(0, 30));
     if (url.pathname === '/api/analyze') return await handleAnalyze(req, res, url);
     const graph = url.pathname.match(/^\/api\/graphs\/([\w.-]+\.(?:graph|src)\.json)$/);
     if (graph) {

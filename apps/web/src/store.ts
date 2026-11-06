@@ -25,6 +25,8 @@ interface State {
 
   /** true when a Tesseract server is available to analyze repositories by URL */
   server: boolean;
+  /** false until the initial checks in loadRepos finish, so the first screen does not flash */
+  ready: boolean;
 
   loadRepos(): Promise<void>;
   loadRepo(id: string): Promise<void>;
@@ -79,6 +81,7 @@ export const useStore = create<State>((set, get) => ({
   progress: null,
   error: null,
   server: false,
+  ready: false,
   selected: null,
   flowId: null,
   step: 0,
@@ -107,25 +110,29 @@ export const useStore = create<State>((set, get) => ({
       return;
     }
     try {
-      const [samples, server] = await Promise.all([
-        fetch(`${base}graphs/index.json`).then((r) => (r.ok ? (r.json() as Promise<RepoEntry[]>) : [])).catch(() => []),
-        fetch(`${base}api/health`).then((r) => r.ok && r.headers.get('content-type')?.includes('json')).catch(() => false),
+      // Only graphs the user generated locally with the CLI live under graphs/; the site starts empty otherwise.
+      const isJson = (r: Response) => r.ok && !!r.headers.get('content-type')?.includes('json');
+      const [local, server] = await Promise.all([
+        fetch(`${base}graphs/index.json`).then((r) => (isJson(r) ? (r.json() as Promise<RepoEntry[]>) : [])).catch(() => []),
+        fetch(`${base}api/health`).then(isJson).catch(() => false),
       ]);
-      const recent: RepoEntry[] = server ? await fetch(`${base}api/repos`).then((r) => (r.ok ? r.json() : [])).catch(() => []) : [];
-      set({ repos: [...recent, ...samples], server: !!server });
+      set({ repos: local, server, ready: true });
       const params = new URLSearchParams(location.search);
       const remote = params.get('url');
-      if (remote && server) return get().analyzeUrl(remote);
-      const wanted = params.get('repo');
-      const pick = get().repos.find((r) => repoId(r) === wanted) ?? samples[0] ?? recent[0];
+      if (remote) {
+        if (server) return get().analyzeUrl(remote);
+        set({ error: 'This copy of Tesseract has no analyzer server, so it cannot analyze repositories by URL.' });
+      }
+      const pick = local.find((r) => repoId(r) === params.get('repo')) ?? (server ? undefined : local[0]);
       if (pick) await get().loadRepo(repoId(pick));
-      else if (!server) set({ error: 'No analyzed repositories yet. Run: npm run analyze -- <path | git-url>' });
     } catch (e) {
-      set({ error: String(e) });
+      set({ error: String(e), ready: true });
     }
   },
 
   async loadRepo(id) {
+    analysis?.abort();
+    analysis = null;
     set({ loading: true, error: null, progress: null, repo: id, sources: null, flowId: null, playing: false, selected: null });
     try {
       const res = await fetch(graphUrl(get().repos, id, 'graph'));
@@ -166,6 +173,7 @@ export const useStore = create<State>((set, get) => ({
         else if (event === 'done') {
           const rec = data as RepoEntry & { key: string };
           set({ repos: [rec, ...get().repos.filter((r) => repoId(r) !== rec.key)] });
+          analysis = null;
           await get().loadRepo(rec.key);
           return;
         }

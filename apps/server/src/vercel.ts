@@ -194,7 +194,6 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     const route = url.searchParams.get('__path') ?? url.pathname.replace(/^\/api\/?/, '');
     if (req.method !== 'GET' && req.method !== 'HEAD') return sendJson(res, 405, { error: 'method not allowed' });
     if (route === 'health') return sendJson(res, 200, { ok: true, storage: useBlob() ? 'blob' : 'tmp' });
-    if (route === 'repos') return sendJson(res, 200, (await readIndex()).slice(0, 30));
     if (route === 'analyze') return await handleAnalyze(req, res, url);
     const graph = route.match(/^graphs\/([\w.-]+\.(?:graph|src)\.json)$/);
     if (graph) return await handleGraph(res, graph[1]);

@@ -95,6 +95,56 @@ function AnalyzeBar() {
   );
 }
 
+const EXAMPLES = ['github.com/gothinkster/node-express-realworld-example-app', 'github.com/fastapi/full-stack-fastapi-template', 'github.com/spring-projects/spring-petclinic'];
+
+/** First screen: nothing is shown until the user names a repository. */
+function Welcome() {
+  const server = useStore((s) => s.server);
+  const analyzeUrl = useStore((s) => s.analyzeUrl);
+  const [url, setUrl] = useState('');
+  return (
+    <main className="welcome">
+      <h1>See how a codebase works, end to end</h1>
+      <p>Paste a repository URL and Tesseract maps its workflow: the screens and endpoints where requests come in, the code that handles them, and the databases and services they reach.</p>
+      {server ? (
+        <>
+          <form
+            className="welcome-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (url.trim()) void analyzeUrl(url.trim());
+            }}
+          >
+            <input
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="github.com/owner/repo"
+              inputMode="url"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              autoFocus
+              aria-label="Repository URL"
+            />
+            <button type="submit" disabled={!url.trim()}>Analyze</button>
+          </form>
+          <div className="welcome-examples">
+            <span>Try:</span>
+            {EXAMPLES.map((ex) => (
+              <button key={ex} onClick={() => void analyzeUrl(ex)}>{ex.split('/').slice(1).join('/')}</button>
+            ))}
+          </div>
+          <p className="welcome-note">Public repos on GitHub, Bitbucket and Codeberg. Private repo? Use the Tesseract VS Code / Cursor extension — your code is analyzed on your machine and never uploaded.</p>
+        </>
+      ) : (
+        <p className="welcome-note">
+          Analyze a local folder with <code>npm run analyze &lt;path&gt; &lt;name&gt;</code>, or start the analyzer server with <code>npm run server</code> to analyze repositories by URL.
+        </p>
+      )}
+    </main>
+  );
+}
+
 function TopBar() {
   const repos = useStore((s) => s.repos);
   const repo = useStore((s) => s.repo);
@@ -115,15 +165,19 @@ function TopBar() {
         </>
       ) : (
         <>
-          <select value={repo ?? ''} onChange={(e) => loadRepo(e.target.value)} aria-label="Repository">
-            {repos.map((r) => (
-              <option key={repoId(r)} value={repoId(r)}>{r.url ? `${r.name} · ${r.url.replace(/^https:\/\//, '').split('/')[0]}` : r.name}</option>
-            ))}
-          </select>
-          {server && <AnalyzeBar />}
+          {repos.length > 1 ? (
+            <select value={repo ?? ''} onChange={(e) => loadRepo(e.target.value)} aria-label="Repository">
+              {repos.map((r) => (
+                <option key={repoId(r)} value={repoId(r)}>{r.url ? `${r.name} · ${r.url.replace(/^https:\/\//, '').split('/')[0]}` : r.name}</option>
+              ))}
+            </select>
+          ) : (
+            repo && <span className="repo-name" title={index?.g.meta.source}>{repos[0]?.name ?? repo}</span>
+          )}
+          {server && index && <AnalyzeBar />}
         </>
       )}
-      <Search />
+      {index && <Search />}
       {stats && (
         <div className="stats">
           <span>{stats.files.toLocaleString()} files</span>
@@ -206,6 +260,7 @@ export function App() {
   const error = useStore((s) => s.error);
   const loading = useStore((s) => s.loading);
   const progress = useStore((s) => s.progress);
+  const ready = useStore((s) => s.ready);
   const sheet = useStore((s) => s.sheet);
   const setSheet = useStore((s) => s.setSheet);
   const mobile = useIsMobile();
@@ -221,6 +276,7 @@ export function App() {
       <TopBar />
       {error && <div className="notice">{error}</div>}
       {loading && !error && <div className="notice">{progress ?? 'Loading graph…'}</div>}
+      {ready && !index && !loading && !inEditor && <Welcome />}
       {index && (
         <>
           <WorkflowView />

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { FLOW_KIND_LABEL, LANE_COLOR, nodeColor } from '../colors';
 import { inEditor, postToHost } from '../host';
+import { flowLabel } from '../graph';
 import { useStore } from '../store';
 import type { GNode } from '../types';
 import { CodeView } from './CodeView';
@@ -22,6 +23,15 @@ function NodeLink({ node, onClick }: { node: GNode; onClick?: () => void }) {
   );
 }
 
+function FlowName({ label }: { label: { title: string; sub: string } }) {
+  return (
+    <span className="flow-name">
+      <span className="flow-name-title">{label.title}</span>
+      {label.sub && <span className="flow-name-sub">{label.sub}</span>}
+    </span>
+  );
+}
+
 export function FlowsPanel() {
   const index = useStore((s) => s.index)!;
   const flowId = useStore((s) => s.flowId);
@@ -29,7 +39,10 @@ export function FlowsPanel() {
   const setFlow = useStore((s) => s.setFlow);
   const setStep = useStore((s) => s.setStep);
   const [q, setQ] = useState('');
-  const flows = useMemo(() => index.g.flows.filter((f) => f.name.toLowerCase().includes(q.toLowerCase())), [index, q]);
+  const flows = useMemo(() => {
+    const needle = q.toLowerCase();
+    return index.g.flows.map((f) => ({ f, label: flowLabel(f) })).filter(({ f, label }) => `${f.name} ${label.title}`.toLowerCase().includes(needle));
+  }, [index, q]);
 
   if (flowId !== null) {
     const flow = index.g.flows[flowId];
@@ -37,7 +50,7 @@ export function FlowsPanel() {
       <div className="panel-body">
         <button className="back" onClick={() => setFlow(null)}>← All flows</button>
         <h3 className="flow-title">
-          <span className={`badge badge-${flow.kind}`}>{FLOW_KIND_LABEL[flow.kind]}</span> {flow.name}
+          <span className={`badge badge-${flow.kind}`}>{FLOW_KIND_LABEL[flow.kind]}</span> {flowLabel(flow).title}
         </h3>
         <ol className="steps">
           {flow.steps.map((s, i) => {
@@ -61,10 +74,10 @@ export function FlowsPanel() {
       <input className="filter" placeholder={`Filter ${index.g.flows.length} flows…`} value={q} onChange={(e) => setQ(e.target.value)} />
       {!flows.length && <p className="muted">No entry points detected. Explore the structure, or pick a function and follow its calls.</p>}
       <ul className="flows">
-        {flows.map((f) => (
+        {flows.map(({ f, label }) => (
           <li key={f.id} onClick={() => setFlow(f.id)} title={f.name}>
             <span className={`badge badge-${f.kind}`}>{FLOW_KIND_LABEL[f.kind]}</span>
-            <span className="flow-name">{f.name}</span>
+            <FlowName label={label} />
             <span className="flow-lanes" title={f.layers.join(' → ')}>
               {(f.layers ?? []).map((l) => (
                 <i key={l} style={{ background: LANE_COLOR[l] }} />
@@ -140,7 +153,7 @@ export function DetailsPanel() {
             {flows.map((f) => (
               <li key={f.id} onClick={() => useStore.getState().setFlow(f.id)}>
                 <span className={`badge badge-${f.kind}`}>{FLOW_KIND_LABEL[f.kind]}</span>
-                <span className="flow-name">{f.name}</span>
+                <FlowName label={flowLabel(f)} />
               </li>
             ))}
           </ul>

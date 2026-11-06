@@ -17,7 +17,7 @@ const require = createRequire(path.join(root, 'packages/analyzer/package.json'))
 await fs.rm(out, { recursive: true, force: true });
 
 execSync('npm run build -w @tesseract/web', { cwd: root, stdio: 'inherit' });
-await fs.cp(path.join(root, 'apps/web/dist'), path.join(out, 'static'), { recursive: true, filter: (src) => !src.endsWith('.src.json') });
+await fs.cp(path.join(root, 'apps/web/dist'), path.join(out, 'static'), { recursive: true, filter: (src) => !src.includes(`${path.sep}graphs`) });
 
 await build({
   entryPoints: [path.join(here, 'src/vercel.ts')],
