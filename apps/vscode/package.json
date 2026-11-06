@@ -3,9 +3,22 @@
   "displayName": "Tesseract: Codebase Workflow",
   "description": "See any repository as an interactive end-to-end workflow, from UI screens to API endpoints to services and datastores. Runs entirely on your machine.",
   "version": "0.1.0",
-  "publisher": "tesseract",
-  "private": true,
-  "license": "UNLICENSED",
+  "publisher": "science-nerd",
+  "license": "MIT",
+  "icon": "images/icon.png",
+  "galleryBanner": {
+    "color": "#020617",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sharad272/RepoAnalyser.git",
+    "directory": "apps/vscode"
+  },
+  "homepage": "https://github.com/sharad272/RepoAnalyser#readme",
+  "bugs": {
+    "url": "https://github.com/sharad272/RepoAnalyser/issues"
+  },
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -68,7 +81,9 @@
   },
   "scripts": {
     "build": "tsx build.mts",
-    "package": "tsx build.mts --production && vsce package --no-dependencies --skip-license --allow-missing-repository --out tesseract-workflow.vsix",
+    "package": "tsx build.mts --production && vsce package --no-dependencies --out tesseract-workflow.vsix",
+    "publish:vscode": "vsce publish --no-dependencies --packagePath tesseract-workflow.vsix",
+    "publish:openvsx": "ovsx publish tesseract-workflow.vsix",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
@@ -76,6 +91,7 @@
     "@types/vscode": "1.80.0",
     "@vscode/vsce": "^3.2.0",
     "esbuild": "^0.25.0",
+    "ovsx": "^0.10.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   }
